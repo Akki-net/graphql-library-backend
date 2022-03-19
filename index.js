@@ -107,7 +107,11 @@ const typeDefs = gql`
           author: String!
           published: Int!
           genres: [String!]!
-      ): Book!
+      ): Book
+      editAuthor(
+        name: String!
+        setBornTo: Int!
+      ): Author
   }
 `
 
@@ -117,14 +121,14 @@ const resolvers = {
         bookCount: () => books.length,
         allBooks: (root, args) => {
 
-            if(args.author && args.genre){
+            if (args.author && args.genre) {
                 return books.filter(b => b.author === args.author && b.genres.includes(args.genre))
             }
-            else if(args.author){
+            else if (args.author) {
                 return books.filter(b => b.author === args.author)
-            }else if(args.genre){
+            } else if (args.genre) {
                 return books.filter(b => b.genres.includes(args.genre))
-            }else{
+            } else {
                 return books
             }
 
@@ -141,24 +145,35 @@ const resolvers = {
 
     Mutation: {
         addBook: (root, args) => {
-            if(books.find(b => b.title === args.title)){
+            if (books.find(b => b.title === args.title)) {
                 throw new UserInputError("Book's title must unique", {
                     invalidArgs: args.title
                 })
             }
 
-            if(!authors.find(author => author.name === args.author)){
+            if (!authors.find(author => author.name === args.author)) {
                 const author = {
                     name: args.author,
                     id: uuid()
                 }
-    
+
                 authors.push(author)
             }
 
             const book = { ...args, id: uuid() }
             books.push(book)
             return book
+        },
+
+        editAuthor: (root, args) => {
+            const author = authors.find(author => author.name === args.name)
+            if (!author) {
+                return null
+            }
+
+            const updatedAuthor = { ...author, born: args.setBornTo }
+            authors = authors.map(author => author.name !== args.name ? author : updatedAuthor)
+            return updatedAuthor
         }
     }
 }
