@@ -83,7 +83,7 @@ const typeDefs = gql`
   type Book {  
       title: String!
       published: Int!
-      author: String!
+      author: Author!
       id: ID!
       genres: [String!]!
   }
@@ -149,6 +149,7 @@ const resolvers = {
                 throw new UserInputError("Book's title must unique", {
                     invalidArgs: args.title
                 })
+                return null
             }
 
             if (!authors.find(author => author.name === args.author)) {
