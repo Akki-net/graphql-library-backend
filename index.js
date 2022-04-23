@@ -177,7 +177,7 @@ const resolvers = {
         allAuthors: async () => Author.find(),
         me: (root, args, context) => {
             return context.currentUser
-          }
+        }
     },
 
     Author: {
@@ -189,7 +189,7 @@ const resolvers = {
     },
 
     Mutation: {
-        addBook: async (root, args) => {
+        addBook: async (root, args, context) => {
             // if (books.find(b => b.title === args.title)) {
             //     throw new UserInputError("Book's title must unique", {
             //         invalidArgs: args.title
@@ -206,53 +206,61 @@ const resolvers = {
             //     authors.push(author)
             // }
 
-            const author = new Author({
-                name: args.author
-            })
-
-            try {
-                await author.save()
-            } catch (error) {
-                throw new UserInputError(error.message, {
-                    invalidArgs: args
+            if (context.currentUser) {
+                const author = new Author({
+                    name: args.author
                 })
-            }
 
-            const book = new Book({
-                ...args,
-                author
-            })
+                try {
+                    await author.save()
+                } catch (error) {
+                    throw new UserInputError(error.message, {
+                        invalidArgs: args
+                    })
+                }
 
-            try {
-                await book.save()
-            } catch (error) {
-                throw new UserInputError(error.message, {
-                    invalidArgs: args
+                const book = new Book({
+                    ...args,
+                    author
                 })
+
+                try {
+                    await book.save()
+                } catch (error) {
+                    throw new UserInputError(error.message, {
+                        invalidArgs: args
+                    })
+                }
+                // const book = { ...args, id: uuid() }
+                // books.push(book)
+                return book
+            }else{
+                throw new UserInputError("not authenticated!")
             }
-            // const book = { ...args, id: uuid() }
-            // books.push(book)
-            return book
         },
 
-        editAuthor: async (root, args) => {
+        editAuthor: async (root, args, context) => {
             // const author = authors.find(author => author.name === args.name)
-            const author = await Author.findOne({ name: args.name })
-            if (!author) {
-                return null
+            if (context.currentUser) {
+                const author = await Author.findOne({ name: args.name })
+                if (!author) {
+                    return null
+                }
+                author.born = args.setBornTo;
+                // const updatedAuthor = { ...author, born: args.setBornTo }
+                // authors = authors.map(author => author.name !== args.name ? author : updatedAuthor)
+                try {
+                    await author.save()
+                } catch (error) {
+                    throw new UserInputError(error.message, {
+                        invalidArgs: args
+                    })
+                }
+                // return updatedAuthor
+                return author
+            }else{
+                throw new UserInputError("not authenticated!")
             }
-            author.born = args.setBornTo;
-            // const updatedAuthor = { ...author, born: args.setBornTo }
-            // authors = authors.map(author => author.name !== args.name ? author : updatedAuthor)
-            try {
-                await author.save()
-            } catch (error) {
-                throw new UserInputError(error.message, {
-                    invalidArgs: args
-                })
-            }
-            // return updatedAuthor
-            return author
         },
 
         login: async (root, args) => {
@@ -269,7 +277,7 @@ const resolvers = {
 
             return { value: jwt.sign(userforToken, process.env.JWT_SECRET) }
         },
-       
+
         createUser: async (root, args) => {
             const user = new User({ ...args })
             try {
@@ -290,13 +298,13 @@ const server = new ApolloServer({
     context: async ({ req }) => {
         const auth = req ? req.headers.authorization : null
         if (auth && auth.toLowerCase().startsWith('bearer ')) {
-          const decodedToken = jwt.verify(
-            auth.substring(7), process.env.JWT_SECRET
-          )
-          const currentUser = await User.findById(decodedToken.id)
-          return { currentUser }
+            const decodedToken = jwt.verify(
+                auth.substring(7), process.env.JWT_SECRET
+            )
+            const currentUser = await User.findById(decodedToken.id)
+            return { currentUser }
         }
-      }
+    }
 })
 
 server.listen().then(({ url }) => {
