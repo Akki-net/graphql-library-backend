@@ -207,17 +207,32 @@ const resolvers = {
             // }
 
             if (context.currentUser) {
-                const author = new Author({
-                    name: args.author
-                })
+                let author = await Author.findOne({ name: args.author })
 
-                try {
-                    await author.save()
-                } catch (error) {
-                    throw new UserInputError(error.message, {
-                        invalidArgs: args
+                if (!author) {
+                    author = new Author({
+                        name: args.author,
+                        bookCount: 1
                     })
+
+                    try {
+                        await author.save()
+                    } catch (error) {
+                        throw new UserInputError(error.message, {
+                            invalidArgs: args
+                        })
+                    }
+                } else {
+                    author.bookCount++
+                    try {
+                        await author.save()
+                    } catch (error) {
+                        throw new UserInputError(error.message, {
+                            invalidArgs: args
+                        })
+                    }
                 }
+
 
                 const book = new Book({
                     ...args,
@@ -234,7 +249,7 @@ const resolvers = {
                 // const book = { ...args, id: uuid() }
                 // books.push(book)
                 return book
-            }else{
+            } else {
                 throw new UserInputError("not authenticated!")
             }
         },
@@ -258,7 +273,7 @@ const resolvers = {
                 }
                 // return updatedAuthor
                 return author
-            }else{
+            } else {
                 throw new UserInputError("not authenticated!")
             }
         },
